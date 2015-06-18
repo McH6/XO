@@ -183,9 +183,9 @@ public class ClientControllerImpl implements ClientController{
 		          char[][] table = (char[][]) cm.getMessage();
 		          if (table != null) {
   		          view.log("Game loaded.");
-  		          if (userName.equals(cm.getTo()))
+  		          if (userName.equals(cm.getFrom()))
   		            mark = 'X';
-  		          else if (userName.equals(cm.getFrom()))
+  		          else if (userName.equals(cm.getTo()))
   		            mark = 'O';
   		          int xCount = 0;
   		          int yCount = 0;
@@ -193,18 +193,21 @@ public class ClientControllerImpl implements ClientController{
   		            for (char c : cv)
   		              if (c == 'X')
   		                xCount++;
-  		              else
+  		              else if (c == 'O')
   		                yCount++;
-  		          if (xCount == yCount)
-  		            if (mark == 'X')
+  		          if (xCount == yCount) {
+  		            if (mark == 'X') {
   		              view.updateWholeTable(table, true, mark);
-  		            else
+  		            } else {
   		              view.updateWholeTable(table, false, mark);
-  		          else
-  		            if (mark == 'O')
+  		            }
+  		          } else {
+  		            if (mark == 'O') {
                     view.updateWholeTable(table, true, mark);
-                  else
+  		            } else {
                     view.updateWholeTable(table, false, mark);
+  		            }
+  		          }
 		          } else {
 		            view.log("Loading failed!");
 		          }

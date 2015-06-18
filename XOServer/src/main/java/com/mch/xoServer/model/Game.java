@@ -1,55 +1,63 @@
 package com.mch.xoServer.model;
 
 public class Game {
+
+  public static final char X = 'X';
+  public static final char O = 'O';
+  public static final char SPACE = ' ';
+
   // player1Id + player2Id is PK
+  // !! order matters: p1 and p2 is not the same Game as p2 and p1
   // => only one saved game for player pairs
   private String player1;
   private String player2;
 
-  private char player1Mark;
-  private char player2Mark;
-
   private char[][] table;
 
-  private int n;
-  private int k;
+  // the rules of the game should not change
+  // after the game is created
+  private final int n;
+  private final int k;
 
   public Game(String player1, String player2, int n, int k) {
     super();
     this.player1 = player1;
     this.player2 = player2;
-    this.player1Mark = 'X';
-    this.player2Mark = 'O';
     this.n = n;
     this.k = k;
     this.table = new char[n][n];
   }
 
-  public Game(String player1, String player2, char player1Mark,
-      char player2Mark, char[][] table, int n, int k) {
+  public Game(String player1, String player2, char[][] table, int n, int k) {
     super();
     this.player1 = player1;
     this.player2 = player2;
-    this.player1Mark = player1Mark;
-    this.player2Mark = player2Mark;
-    this.table = table;
     this.n = n;
     this.k = k;
+    this.table = table;
   }
 
-  public char getMark(String player) {
+  public String getEnemy(String player) throws IllegalArgumentException {
     if (player1.equals(player))
-      return player1Mark;
+      return player2;
     if (player2.equals(player))
-      return player2Mark;
-    // this should never happen
-    return '_';
+      return player1;
+    throw new IllegalArgumentException("Player not in game!");
   }
 
-  public boolean mark(String player, int row, int col) throws IndexOutOfBoundsException {
+  public char getMark(String player) throws IllegalArgumentException {
+    if (player1.equals(player))
+      return X;
+    if (player2.equals(player))
+      return O;
+    throw new IllegalArgumentException("Player not in game!");
+  }
+
+  public boolean mark(String player, int row, int col)
+      throws IndexOutOfBoundsException {
     char orig = table[row][col];
     // if already marked don't mark
-    if (orig == player1Mark || orig == player2Mark)
+    if (orig == X || orig == O)
       return false;
     table[row][col] = getMark(player);
     return verifyWin(row, col);
@@ -76,39 +84,38 @@ public class Game {
   }
 
   public void setTable(char[][] table) {
-    this.table = table;
+    // verify if correct size
+    if (table.length == this.n) {
+      for (char[] cv : table) {
+        if (cv.length != this.n)
+          return;
+      }
+      this.table = table;
+    }
   }
 
   public int getN() {
     return n;
   }
 
-  public void setN(int n) {
-    this.n = n;
-  }
-
   public int getK() {
     return k;
-  }
-
-  public void setK(int k) {
-    this.k = k;
   }
 
   // return the userName of the winner or null of not finished yet
   private boolean verifyWin(int row, int col) {
     // check for this mark
 
-    // horizontal
-    if (k <= collect(row, col, 1, 0))
-      return true;
-    // vertical
+    // horizontal -
     if (k <= collect(row, col, 0, 1))
       return true;
-    // main diagonal
+    // vertical |
+    if (k <= collect(row, col, 1, 0))
+      return true;
+    // main diagonal \
     if (k <= collect(row, col, 1, 1))
       return true;
-    // secondary diagonal
+    // secondary diagonal /
     if (k <= collect(row, col, 1, -1))
       return true;
     return false;

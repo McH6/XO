@@ -21,28 +21,26 @@ public class SpringGamesDaoImpl implements SpringGamesDao {
   @Autowired
   @Qualifier("dataSource")
   public void setDataSource(DataSource dataSource) {
-      this.jdbcTemplateObject = new JdbcTemplate(dataSource);
+    this.jdbcTemplateObject = new JdbcTemplate(dataSource);
   }
 
   @Override
-  public Game retrieveGame(String player1, String player2) {
+  public Game retrieveGame(String player1, String player2)
+      throws DataAccessException {
+    // !! will load both player1 vs player2 AND player2 vs player1 games
     String sql = "SELECT * from games where (player1 = '" + player1
-        + "' AND player2 = '" + player2 + "') OR "
-        + "(player1 = '" + player2 + "' AND player2 = '" + player1 + "')";
+        + "' AND player2 = '" + player2 + "') ";
     SqlRowSet rowSet = null;
     try {
       rowSet = jdbcTemplateObject.queryForRowSet(sql);
     } catch (DataAccessException ex) {
-      System.err.println(ex.getMessage());
-      return null;
+      throw ex;
     }
     Game game = null;
+    // should have just one element (Primary Key)
     if (rowSet.next()) {
       String p1 = rowSet.getString("player1");
       String p2 = rowSet.getString("player2");
-
-      char player1Mark = rowSet.getString("player1Mark").charAt(0);
-      char player2Mark = rowSet.getString("player2Mark").charAt(0);
 
       int n = rowSet.getInt("n");
       int k = rowSet.getInt("k");
@@ -53,47 +51,45 @@ public class SpringGamesDaoImpl implements SpringGamesDao {
         for (int j = 0; j < n; j++)
           table[i][j] = tb.charAt(i * n + j);
 
-      game = new Game(p1, p2, player1Mark, player2Mark, table, n, k);
+      game = new Game(p1, p2, table, n, k);
     }
     return game;
   }
 
   @Override
-  public void saveGame(Game game) {
+  public int saveGame(Game game) throws DataAccessException {
     String table = "";
     for (char[] row : game.getTable())
       for (char c : row)
-        if (c == 'X' || c == 'O') {
+        if (c == Game.X || c == Game.O) {
           table += c;
         } else {
-          table += " ";
+          table += Game.SPACE;
         }
-    
-    String updatetSql = "UPDATE games SET "
-        + "player1Mark='" + game.getMark(game.getPlayer1()) + "', "
-        + "player2Mark='" + game.getMark(game.getPlayer2()) + "', "
-        + "n=" + game.getN() + ", "
-        + "k=" + game.getK() + ", "
-        + "gameTable='" + table + "' "
-        + "WHERE player1 = '" + game.getPlayer1() + "' AND player2 = '" + game.getPlayer2() + "' ";
-//        + "IF @@ROWCOUNT=0 "
-    String insertSql = "INSERT INTO games (player1, player2, gameTable, "
-        + "player1Mark, player2Mark, n, k) VALUES ('"
-        + game.getPlayer1() + "', '"
-        + game.getPlayer2() + "', '"
-        + table + "', '"
-        + game.getMark(game.getPlayer1()) + "', '"
-        + game.getMark(game.getPlayer2()) + "', "
-        + game.getN() + ","
-        + game.getK()
-        + ");";
-   
+
     try {
+      String updatetSql = "UPDATE games SET n=" + game.getN() + ", " + "k="
+          + game.getK() + ", " + "gameTable='" + table + "' "
+          + "WHERE player1 = '" + game.getPlayer1() + "' AND player2 = '"
+          + game.getPlayer2() + "' ";
+
       int res = jdbcTemplateObject.update(updatetSql);
-      if (res == 0)
+      if (res != 0) {
+        // updated old game
+        return 2;
+      } else {
+        // no lines updated => insert
+        String insertSql = "INSERT INTO games (player1, player2, gameTable, n, k) "
+            + "VALUES ('"
+            + game.getPlayer1()
+            + "', '"
+            + game.getPlayer2()
+            + "', '" + table + "', " + game.getN() + "," + game.getK() + ");";
         jdbcTemplateObject.execute(insertSql);
+        return 1;
+      }
     } catch (DataAccessException ex) {
-      System.err.println(ex.getMessage());
+      throw ex;
     }
   }
 }

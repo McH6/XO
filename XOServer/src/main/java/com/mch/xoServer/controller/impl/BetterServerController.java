@@ -30,7 +30,7 @@ import com.mch.xoServer.view.awtEvent.MyMessageLogAWTEvent;
 
 // the actual server
 @Component
-public class ServerControllerImpl implements ServerController {
+public class BetterServerController implements ServerController {
 
   // list of client handling threads
   // it does not have to be synchronized, all accessing methods are..
@@ -43,7 +43,7 @@ public class ServerControllerImpl implements ServerController {
   private ServerView view;
 
   @Autowired
-  public ServerControllerImpl(final GameDataSource dataSource,
+  public BetterServerController(final GameDataSource dataSource,
       final ServerSocketFactory serverSocketFactory) {
     this.dataSource = dataSource;
     this.serverSocketFactory = serverSocketFactory;
