@@ -1,14 +1,12 @@
 package com.mch.xoClient.controller;
 
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.net.Socket;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import com.mch.xoClient.communication.NetworkDataSource;
 import com.mch.xoClient.view.ClientView;
 import com.mch.xoData.exception.XOException;
 import com.mch.xoData.transferData.TransferData;
@@ -18,10 +16,8 @@ import com.mch.xoData.transferData.TransferType;
 @Component
 public class ClientControllerImpl implements ClientController{
   
-	// for I/O
-	private ObjectInputStream sInput; // to read from the socket
-	private ObjectOutputStream sOutput; // to write on the socket
-	private Socket socket;
+  @Autowired
+  private NetworkDataSource network;
 
   private String userName;
 	private String enemyName;
@@ -36,34 +32,31 @@ public class ClientControllerImpl implements ClientController{
 	  this.userName = userName;
 		// try to connect to the server
 		try {
-			socket = new Socket(host, port);
+			network.connect(host, port);
 		}
 		// if it failed not much I can so
 		catch (Exception ec) {
-			updateView("Error connectiong to server:" + ec);
+			updateView("Error connectiong to server: " + ec);
 			return false;
 		}
-
-		String msg = "Connection accepted " + socket.getInetAddress() + ":"
-				+ socket.getPort();
+		String msg = "Connection accepted " + network.getInetAddress() + ":"
+				+ network.getPort();
 		updateView(msg);
-
-		/* Creating both Data Stream */
-		try {
-			sInput = new ObjectInputStream(socket.getInputStream());
-			sOutput = new ObjectOutputStream(socket.getOutputStream());
-		} catch (IOException eIO) {
-			updateView("Exception creating new Input/output Streams: " + eIO);
-			return false;
-		}
 
 		// Send user name to the server this is the only message that we
 		// will send as a String. All other messages will be TransferData objects
 		try {
-			sOutput.writeObject(userName);
+		  network.send(userName);
 		} catch (IOException eIO) {
 			updateView("Exception doing login : " + eIO);
-			disconnect();
+			try {
+			  network.disconnect();
+	    } catch (Exception e) {
+	      updateView(e.getMessage());
+	    }
+	    // inform the GUI
+	    if (view != null)
+	      view.connectionFailed();
 			return false;
 		}
 
@@ -71,7 +64,7 @@ public class ClientControllerImpl implements ClientController{
 		// client GUI
 		TransferData<Boolean> cm = null;
 		try {
-			cm = (TransferData<Boolean>) sInput.readObject();
+			cm = (TransferData<Boolean>) network.receive();
 		} catch (ClassNotFoundException e) {
 			updateView(e.getMessage());
 		} catch (IOException e) {
@@ -117,7 +110,7 @@ public class ClientControllerImpl implements ClientController{
 	// send a message to the server
 	private boolean sendMessage(TransferData<?> msg) {
 		try {
-			sOutput.writeObject(msg);
+			network.send(msg);
 			return true;
 		} catch (IOException e) {
 			updateView("Exception writing to server: " + e);
@@ -139,23 +132,6 @@ public class ClientControllerImpl implements ClientController{
 	  return mark;
 	}
 	
-	// if something goes wrong Close the Input/Output streams and disconnect
-	private void disconnect() {
-		try {
-			if (sInput != null)
-				sInput.close();
-			if (sOutput != null)
-				sOutput.close();
-			if (socket != null)
-				socket.close();
-		} catch (Exception e) {
-			updateView(e.getMessage());
-		}
-		// inform the GUI
-		if (view != null)
-			view.connectionFailed();
-	}
-	
 	// a class that waits for the message from the server
 	private class ListenFromServer extends Thread {
 
@@ -164,7 +140,7 @@ public class ClientControllerImpl implements ClientController{
 			while (true) {
 				try {
 					// all results are received here
-					Object o = sInput.readObject();
+					Object o = network.receive();
 					if (o instanceof TransferData<?>) {
 						TransferData<?> cm = (TransferData<?>) o;
 

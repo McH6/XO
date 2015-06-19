@@ -154,7 +154,6 @@ public class ServerControllerImpl implements ServerController {
       /* Creating both Data Stream */
       try {
         // create output first
-        System.out.println("real:" + socket);
         this.sOutput = createObjectOutputStream(this.socket);
         this.sInput = createObjectInputStream(this.socket);
         // read the user name String, the only time a string is sent,
